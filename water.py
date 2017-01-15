@@ -78,7 +78,7 @@ def dump(decoded):
       decoded = decoded[block_size + 2:]
       crc_real = crc(block[:block_size])
 
-      print "| [L=%d]" % block_size,
+      print "| [L=%02d]" % block_size,
       
       if ci is None:
           ci = CIVALS.get(ord(block[0]), hexdump(block[0]))
