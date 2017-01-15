@@ -1,7 +1,8 @@
-techem-gui.grc - broken gui frontend for gnuradio
 baseband.c - fast generic baseband decoder
 decode.py - techem heat meter specific standalone decoder
 water.py - application layer decoder (pipe baseband into this)
 capture.py  - gnuradio capture - output is 3.6GB/h (pipe this into decode or
 baseband)
 techem.grc - gnuradio schema for capture.py
+
+decode-stream.sh - full script that decodes in realtime (capture -> baseb\nd -> water.py) with no intermediate files
