@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Top Block
-# Generated: Sun Jan 15 11:09:27 2017
+# Generated: Sun Jan 15 14:39:44 2017
 ##################################################
 
 from gnuradio import analog
@@ -53,8 +53,7 @@ class top_block(gr.top_block):
           
         self.freq_xlating_fir_filter_xxx_0_1 = filter.freq_xlating_fir_filter_ccc(1, (firdes.low_pass(1, samp_rate,cutoff, width,  firdes.WIN_BLACKMAN, 6.76)), -freq_offset, samp_rate)
         self.digital_binary_slicer_fb_0 = digital.binary_slicer_fb()
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_char*1, "capture", False)
-        self.blocks_file_sink_0.set_unbuffered(False)
+        self.blocks_file_descriptor_sink_0 = blocks.file_descriptor_sink(gr.sizeof_char*1, 1)
         self.analog_simple_squelch_cc_0 = analog.simple_squelch_cc(squelch, 1)
         self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(demodgain)
 
@@ -63,7 +62,7 @@ class top_block(gr.top_block):
         ##################################################
         self.connect((self.analog_quadrature_demod_cf_0, 0), (self.digital_binary_slicer_fb_0, 0))    
         self.connect((self.analog_simple_squelch_cc_0, 0), (self.analog_quadrature_demod_cf_0, 0))    
-        self.connect((self.digital_binary_slicer_fb_0, 0), (self.blocks_file_sink_0, 0))    
+        self.connect((self.digital_binary_slicer_fb_0, 0), (self.blocks_file_descriptor_sink_0, 0))    
         self.connect((self.freq_xlating_fir_filter_xxx_0_1, 0), (self.analog_simple_squelch_cc_0, 0))    
         self.connect((self.rtlsdr_source_0, 0), (self.freq_xlating_fir_filter_xxx_0_1, 0))    
 

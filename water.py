@@ -1,21 +1,38 @@
-#!/usr/bin/env python
+#!/usr/bin/python -u
 
 import sys, math, binascii, struct
 from bitarray import bitarray
 from crcmod import Crc
 from collections import defaultdict
 from hamm import hamming
+from time import gmtime, strftime
+
+# Resources:
+# www.st.com/resource/en/application_note/dm00233038.pdf
+# http://oms-group.org/fileadmin/pdf/OMS-Spec_Vol2_Primary_v301.pdf
+# https://github.com/mjung85/iotsys/blob/master/wiki/MBusConnector.md 
 
 # poly: x16+x13+x12+x11+x10+x8+x6+x5+x2+1
 poly=(1<<16)+(1<<13)+(1<<12)+(1<<11)+(1<<10)+(1<<8)+(1<<6)+(1<<5)+(1<<2)+1
 CRC16 = Crc(poly, initCrc=0xffff, rev=False, xorOut=0xffff)
 
-CVALS = {}
+CVALS = {
+    0x44: "SND-NR",
+    0x47: "ACC-NR",
+    0x08: "RSP-UD",
+    0x18: "RSP-UD",
+    0x28: "RSP-UD",
+    0x38: "RSP-UD"
+}
 
-def check(data, crc):
+CIVALS = {
+    0x72: "RfD-12-Mb",
+}
+
+def crc(data):
     crc16 = CRC16.copy()
     crc16.update(data)
-    return crc == crc16.digest()
+    return crc16.digest()
 
 def todate(d):
     d=[ord(c) for c in d]
@@ -24,39 +41,64 @@ def todate(d):
         ((d[1]>>1) & 0xf),
         ((d[1] & 1) << 4) | (d[0] >> 4))
 
+def decode2Bto3ch(vendor):
+    manuf = []
+    for i in xrange(3):
+        manuf.append(chr(0x40 + (vendor & 0x1f)))
+        vendor >>= 5
+    return ''.join(reversed(manuf))
+
 def dump(decoded):
     if len(decoded) < 24:
         return
 
-    manuf = []
     vendor = struct.unpack("<H", decoded[2:4])[0]
-    for i in xrange(3):
-        manuf.append(chr(0x40 + (vendor & 0x1f)))
-        vendor >>= 5
-    manuf = ''.join(reversed(manuf))
+    manuf = decode2Bto3ch(vendor)
 
-    print "%02x%02x" % (ord(decoded[5]),ord(decoded[4])),
-    print "%02x%02x" % (ord(decoded[6]),ord(decoded[7])),
-    print "%02x%02x" % (ord(decoded[8]),ord(decoded[9])),
-    print "%-10s" % todate(decoded[18:20]),
-    print "%-5s" % struct.unpack('<H',decoded[20:22])[0],
-    print "%-5s" % struct.unpack('<H',decoded[22:24])[0],
+    addr = format(ord(pkt[4]),"02x")+format(ord(pkt[5]),"02x")
+    size = ord(decoded[0])
 
-    print '\t', ' | '.join((hexdump(decoded[12:28]), hexdump(decoded[30:46]), hexdump(decoded[48:-2])))
+    print strftime("%d %b %Y %H:%M:%S", gmtime()),
+    print "<L %d>" % size,
+    print "<C %s>" %  CVALS.get(ord(decoded[1]), binascii.hexlify(decoded[1])),
+    print "<M %s>" % manuf,
+    print "<addr %s>" % hexdump(decoded[4:10]),
+    print "<crc %s %s>" % (hexdump(decoded[10:12]), "ok" if crc(decoded[:10]) == decoded[10:12] else "F!"), # CRC
+    decoded = decoded[12:]
+    size -= 9 # CRC and len field do not count
+    ci = None
 
-    print >>sys.stderr, '[x] type', binascii.hexlify(decoded[0])
-    print >>sys.stderr, '[x] meter', binascii.hexlify(decoded[1]), CVALS.get(ord(decoded[1]),'UNKNOWN'),
-    print >>sys.stderr, '[x] make', manuf
-    #if decoded[6:8] not in ['\x16\x03','\x17\x03', '\x86\x02', '\x87\x02']:
-    print >>sys.stderr, '[x] at', binascii.hexlify(decoded[6:8]),
-    #    nl=True
-    #if decoded[8:10] != '\x69\x80':
-    print >>sys.stderr, '[x] a', binascii.hexlify(decoded[8:10]),
-    #    nl=True
-    #if decoded[12:16] not in ['\xa0\x11\x9f\x1d', '\xa0\x91\x9f\x1d']:
-    print >>sys.stderr, '[x] 1/1', binascii.hexlify(decoded[12:16]),
-    #    nl=True
-    print >>sys.stderr
+    appdata = ""
+
+    while decoded:
+      block_size = min(16, size)
+      block_start = 0
+      size -= block_size
+      block = decoded[:block_size + 2] # 16 + 2 for CRC
+      decoded = decoded[block_size + 2:]
+      crc_real = crc(block[:block_size])
+
+      print "| [L=%d]" % block_size,
+      
+      if ci is None:
+          ci = CIVALS.get(ord(block[0]), hexdump(block[0]))
+          print "<CI %s>" % ci,
+          block_start = 1
+
+      print hexdump(block[block_start:block_size]),
+      print "<crc %s %s>" % (hexdump(block[block_size:]), "ok" if crc_real == block[block_size:] else "F!"), # CRC
+      appdata += block[:block_size]
+
+    vendor = struct.unpack("<H", appdata[5] + appdata[4])[0]
+    manuf = decode2Bto3ch(vendor)
+
+    #print "[Manuf]", manuf,
+    #print "[Medium]", hexdump(appdata[7]),
+    #print "[Access no]", ord(appdata[8]),
+    print "[Date]", todate(appdata[6:8]),
+    #print "[V1] %-5s" % struct.unpack('<H',appdata[8:10])[0],
+    #print "[V2] %-5s" % struct.unpack('<H',appdata[10:12])[0],
+    print
 
 def split_by_n( seq, n ):
     """A generator to divide a sequence into chunks of n units.
@@ -69,20 +111,13 @@ def hexdump(a):
     return ' '.join(split_by_n(binascii.hexlify(a),4))
 
 if __name__ == '__main__':
-    pkts=[binascii.unhexlify(''.join(line.split())) for line in sys.stdin]
-    pcnt = defaultdict(int)
-    amap = defaultdict(list)
-    for p  in pkts:
-        a = format(ord(p[4]),"02x")+format(ord(p[5]),"02x")
-        pcnt[p]+=1
-        amap[a].append(p)
+    for line in iter(sys.stdin.readline, ""):
+      line = ''.join(line.split())
+      if len(line) % 2: # Invalid packet, odd number of hex chars
+          continue
+      try:
+        pkt = binascii.unhexlify(line)
+      except TypeError:
+        continue
+      dump(pkt)
 
-    print "details"
-    for a in sorted(amap.keys()):
-        for t in amap[a]:
-            if t not in pcnt: continue
-            print "%-3s" % pcnt[t],
-            dump(t)
-            #print >>sys.stderr, hexdump(t)
-            del pcnt[t]
-        print

@@ -336,24 +336,25 @@ static void packet() {
   //reset nibble buffer
   nbuf=0; nsize=0;
 
-  pkt[0] = get_byte();
-  size = pkt[0] + 1 + ceil(((float)(pkt[0] - 9))/16.0)*2;
+  pkt[0] = get_byte(); // len byte
+  // size + 2B for first block CRC + 2B for each subsequent block
+  size = pkt[0] + 2 + 2 * ((pkt[0] - 9)/16 + (((pkt[0] - 9) % 16) ? 1 : 0));
   //printf("%02x, %d\n",pkt[0], size);
-  for(i=1;i<size;i++) {
+  for(i=0; i<size; i++) {
     b=get_byte();
     if(b==-1) {
       //printf("meeeh: read pkt error\n");
       break;
     }
-    pkt[i]=b;
+    pkt[i + 1]=b;
   }
   //printf("[%03d/%03d] ", i, size);
   //if(size!=i) {
-    for(j=0;j<i;j++) {
-      printf("%02x",pkt[j]);
-      if(j%2==1) printf(" ");
-    }
-    printf("\n");
+  for(i=0; i<size+1; i++) {
+      printf("%02x",pkt[i]);
+      if(i%2==1) printf(" ");
+  }
+  printf("\n");
   //}
   // todo handle outro
   cur+=80;
