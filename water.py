@@ -85,19 +85,14 @@ def dump(decoded):
           print "<CI %s>" % ci,
           block_start = 1
 
-      print hexdump(block[block_start:block_size]),
+      # print hexdump(block[block_start:block_size]),
       print "<crc %s %s>" % (hexdump(block[block_size:]), "ok" if crc_real == block[block_size:] else "F!"), # CRC
       appdata += block[:block_size]
 
-    vendor = struct.unpack("<H", appdata[5] + appdata[4])[0]
-    manuf = decode2Bto3ch(vendor)
-
-    #print "[Manuf]", manuf,
-    #print "[Medium]", hexdump(appdata[7]),
-    #print "[Access no]", ord(appdata[8]),
-    print "[Date]", todate(appdata[6:8]),
-    #print "[V1] %-5s" % struct.unpack('<H',appdata[8:10])[0],
-    #print "[V2] %-5s" % struct.unpack('<H',appdata[10:12])[0],
+    print "=",
+    print hexdump(appdata[0:6]),
+    print "<Date %s>" % todate(appdata[6:8]),
+    print hexdump(appdata[8:]),
     print
 
 def split_by_n( seq, n ):
