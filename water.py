@@ -29,6 +29,11 @@ CIVALS = {
     0x72: "RfD-12-Mb",
 }
 
+DEVVALS = {
+    0x62: "HotW",
+    0x80: "Heat",
+}
+
 def crc(data):
     crc16 = CRC16.copy()
     crc16.update(data)
@@ -40,6 +45,10 @@ def todate(d):
         (d[1] >> 5) + 2014,
         ((d[1]>>1) & 0xf),
         ((d[1] & 1) << 4) | (d[0] >> 4))
+
+def decodeid(d):
+    assert len(d) == 4
+    return hexdump(d[::-1])
 
 def decode2Bto3ch(vendor):
     manuf = []
@@ -62,7 +71,9 @@ def dump(decoded):
     print "<L %d>" % size,
     print "<C %s>" %  CVALS.get(ord(decoded[1]), binascii.hexlify(decoded[1])),
     print "<M %s>" % manuf,
-    print "<addr %s>" % hexdump(decoded[4:10]),
+    print "<addr %s>" % decodeid(decoded[4:8]),
+    print "<ver %s>" % hexdump(decoded[8]),
+    print "<dev % 4s>" % DEVVALS.get(ord(decoded[9]), hexdump(decoded[9])),
     print "<crc %s %s>" % (hexdump(decoded[10:12]), "ok" if crc(decoded[:10]) == decoded[10:12] else "F!"), # CRC
     decoded = decoded[12:]
     size -= 9 # CRC and len field do not count
@@ -87,12 +98,14 @@ def dump(decoded):
 
       # print hexdump(block[block_start:block_size]),
       print "<crc %s %s>" % (hexdump(block[block_size:]), "ok" if crc_real == block[block_size:] else "F!"), # CRC
-      appdata += block[:block_size]
+      appdata += block[block_start:block_size]
 
     print "=",
-    print hexdump(appdata[0:6]),
-    print "<Date %s>" % todate(appdata[6:8]),
-    print hexdump(appdata[8:]),
+    print "<S %s>" % bin(ord(appdata[0])),
+    print hexdump(appdata[1:3]),
+    print "<Last %d>" % struct.unpack('<H', appdata[3:5])[0],
+    print "<Date %s>" % todate(appdata[5:7]),
+    print hexdump(appdata[7:]),
     print
 
 def split_by_n( seq, n ):
