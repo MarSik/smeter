@@ -1,4 +1,5 @@
 #!/usr/bin/python -u
+# encoding: utf-8
 
 import sys, math, binascii, struct
 from bitarray import bitarray
@@ -6,6 +7,7 @@ from crcmod import Crc
 from collections import defaultdict
 from hamm import hamming
 from time import gmtime, strftime
+import datetime
 
 # Resources:
 # www.st.com/resource/en/application_note/dm00233038.pdf
@@ -40,11 +42,19 @@ def crc(data):
     return crc16.digest()
 
 def todate(d):
-    d=[ord(c) for c in d]
+    now = datetime.datetime.now()
+    d=struct.unpack('<H', d)[0]
     return '%04d-%02d-%02d' % (
-        (d[1] >> 5) + 2014,
-        ((d[1]>>1) & 0xf),
-        ((d[1] & 1) << 4) | (d[0] >> 4))
+        now.year,
+        (d >> 9) & 0x0f,
+        (d >> 4) & 0x1f)
+
+def tolastdate(d):
+    d=struct.unpack('<H', d)[0]
+    return '%04d-%02d-%02d' % (
+        2000 + ((d >> 9) & 0x3f),
+        (d >> 5) & 0x0f,
+        d & 0x1f)
 
 def decodeid(d):
     assert len(d) == 4
@@ -102,10 +112,13 @@ def dump(decoded):
 
     print "=",
     print "<S %s>" % bin(ord(appdata[0])),
-    print hexdump(appdata[1:3]),
+    print "<Last Date %s>" % tolastdate(appdata[1:3]),
     print "<Last %d>" % struct.unpack('<H', appdata[3:5])[0],
     print "<Date %s>" % todate(appdata[5:7]),
-    print hexdump(appdata[7:]),
+    print "<Cur %d>" % struct.unpack('<H', appdata[7:9])[0],
+    print "<T1 %2.2f°C>" % (struct.unpack('<H', appdata[9:11])[0]/100.0),
+    print "<T2 %2.2f°C>" % (struct.unpack('<H', appdata[11:13])[0]/100.0),
+    print hexdump(appdata[13:]),
     print
 
 def split_by_n( seq, n ):
