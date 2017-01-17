@@ -51,7 +51,7 @@ def nextdate(last_date, month, day):
     """
     next_date = last_date.replace(month = month, day = day)
     if (next_date < last_date):
-	next_date = next_date.replace(year = next_date.year)
+	next_date = next_date.replace(year = next_date.year + 1)
     return next_date
 
 def todate(last_date, d):
