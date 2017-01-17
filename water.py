@@ -110,6 +110,7 @@ def dump(decoded):
 
     appdata = ""
 
+    ci = None
     while decoded:
       block_size = min(16, size)
       block_start = 0
@@ -117,7 +118,6 @@ def dump(decoded):
       block = decoded[:block_size + 2] # 16 + 2 for CRC
       decoded = decoded[block_size + 2:]
       crc_real = crc(block[:block_size])
-      ci = None
 
       print "| [L=%02d]" % block_size,
       
