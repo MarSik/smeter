@@ -95,6 +95,8 @@ def dump(decoded):
     addr = decodeid(decoded[4:8])
     version = ord(decoded[8])
     device = ord(decoded[9])
+    crcok = crc(decoded[:10]) == decoded[10:12]
+    fullcrcok = crcok
 
     print strftime("%d %b %Y %H:%M:%S", gmtime()),
     print "<L %d>" % size,
@@ -103,7 +105,7 @@ def dump(decoded):
     print "<addr %s>" % addr,
     print "<ver %s>" % hex(version),
     print "<dev % 4s>" % DEVVALS.get(device, hex(device)),
-    print "<crc %s %s>" % (hexdump(decoded[10:12]), "ok" if crc(decoded[:10]) == decoded[10:12] else "F!"), # CRC
+    print "<crc %s %s>" % (hexdump(decoded[10:12]), "ok" if crcok else "F!"), # CRC
     decoded = decoded[12:]
     size -= 9 # CRC and len field do not count
     ci = None
@@ -111,6 +113,10 @@ def dump(decoded):
     appdata = ""
 
     ci = None
+    if not crcok:
+        print
+        return
+
     while decoded:
       block_size = min(16, size)
       block_start = 0
@@ -118,23 +124,33 @@ def dump(decoded):
       block = decoded[:block_size + 2] # 16 + 2 for CRC
       decoded = decoded[block_size + 2:]
       crc_real = crc(block[:block_size])
+      crcok = crc_real == block[block_size:]
+      fullcrcok = fullcrcok and crcok
 
       print "| [L=%02d]" % block_size,
       
       if ci is None:
           ci = ord(block[0])
+          firstextracrc = crcok
           block_start = 1
 
-      print "<crc %s %s>" % (hexdump(block[block_size:]), "ok" if crc_real == block[block_size:] else "F!"), # CRC
+      print "<crc %s %s>" % (hexdump(block[block_size:]), "ok" if crcok else "F!"), # CRC
       appdata += block[block_start:block_size]
+
+    if not firstextracrc:
+        print
+        return
 
     last_date = tolastdate(appdata[1:3])
     last_reading = struct.unpack('<H', appdata[3:5])[0]
     status = ord(appdata[0])
     daily_date = todate(last_date, appdata[5:7])
     daily_reading = struct.unpack('<H', appdata[7:9])[0]
-    t1 = struct.unpack('<H', appdata[9:11])[0]/100.0
-    t2 = struct.unpack('<H', appdata[11:13])[0]/100.0
+    remaining_data_start = 9
+    if device == 0x80:
+        t1 = struct.unpack('<H', appdata[9:11])[0]/100.0
+        t2 = struct.unpack('<H', appdata[11:13])[0]/100.0
+        remaining_data_start=13
 
     print "=",
     print "<CI %s>" % CIVALS.get(ci, hex(ci)),
@@ -143,9 +159,10 @@ def dump(decoded):
     print "<Last %d>" % last_reading,
     print "<Date %s>" % daily_date.strftime("%Y-%m-%d"),
     print "<Cur %d>" % daily_reading,
-    print "<T1 %2.2f°C>" % t1,
-    print "<T2 %2.2f°C>" % t2,
-    print hexdump(appdata[13:]),
+    if device == 0x80:
+        print "<T1 %2.2f°C>" % t1,
+        print "<T2 %2.2f°C>" % t2,
+    print hexdump(appdata[remaining_data_start:]),
     print
 
 def split_by_n( seq, n ):
