@@ -34,7 +34,8 @@ CIVALS = {
 }
 
 DEVVALS = {
-    0x62: "HotW", 
+    0x62: "HotW",
+    0x72: "ColW",
     0x80: "Heat", # Heating meter
 }
 
@@ -50,7 +51,7 @@ def nextdate(last_date, month, day):
     """
     next_date = last_date.replace(month = month, day = day)
     if (next_date < last_date):
-	next_date += timedelta(years = 1)
+	next_date = next_date.replace(year = next_date.year)
     return next_date
 
 def todate(last_date, d):
@@ -138,9 +139,9 @@ def dump(decoded):
     print "=",
     print "<CI %s>" % CIVALS.get(ci, hex(ci)),
     print "<S %s>" % bin(status),
-    print "<Last Date %s>" % last_date,
+    print "<Last Date %s>" % last_date.strftime("%Y-%m-%d"),
     print "<Last %d>" % last_reading,
-    print "<Date %s>" % daily_date,
+    print "<Date %s>" % daily_date.strftime("%Y-%m-%d"),
     print "<Cur %d>" % daily_reading,
     print "<T1 %2.2f°C>" % t1,
     print "<T2 %2.2f°C>" % t2,
