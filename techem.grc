@@ -120,7 +120,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>200000</value>
+      <value>340000</value>
     </param>
   </block>
   <block>
@@ -305,7 +305,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(656, 252)</value>
+      <value>(648, 252)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -313,7 +313,7 @@
     </param>
     <param>
       <key>gain</key>
-      <value>demodgain</value>
+      <value>samp_rate/(2*math.pi*47000/8.0)</value>
     </param>
     <param>
       <key>id</key>
@@ -399,7 +399,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(808, 364)</value>
+      <value>(768, 560)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -438,7 +438,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(840, 255)</value>
+      <value>(784, 377)</value>
     </param>
     <param>
       <key>_rotation</key>
