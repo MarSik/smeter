@@ -141,12 +141,20 @@ def dump(decoded):
         print
         return
 
+    if device in [0x62, 0x72]:
+        divider = 10.0
+        val_format = "{:.1f}"
+    else:
+        divider = 1.0
+        val_format = "{:.0f}"
+
     last_date = tolastdate(appdata[1:3])
-    last_reading = struct.unpack('<H', appdata[3:5])[0]
+    last_reading = struct.unpack('<H', appdata[3:5])[0] / divider
     status = ord(appdata[0])
     daily_date = todate(last_date, appdata[5:7])
-    daily_reading = struct.unpack('<H', appdata[7:9])[0]
+    daily_reading = struct.unpack('<H', appdata[7:9])[0] / divider
     remaining_data_start = 9
+
     if device == 0x80:
         t1 = struct.unpack('<H', appdata[9:11])[0]/100.0
         t2 = struct.unpack('<H', appdata[11:13])[0]/100.0
@@ -156,9 +164,9 @@ def dump(decoded):
     print "<CI %s>" % CIVALS.get(ci, hex(ci)),
     print "<S %s>" % bin(status),
     print "<Last Date %s>" % last_date.strftime("%Y-%m-%d"),
-    print "<Last %d>" % last_reading,
+    print "<Last %s>" % val_format.format(last_reading),
     print "<Date %s>" % daily_date.strftime("%Y-%m-%d"),
-    print "<Cur %d>" % daily_reading,
+    print "<Cur %s>" % val_format.format(daily_reading),
     if device == 0x80:
         print "<T1 %2.2f°C>" % t1,
         print "<T2 %2.2f°C>" % t2,
@@ -179,7 +187,7 @@ if __name__ == '__main__':
     for line in iter(sys.stdin.readline, ""):
       line = ''.join(line.split())
       if len(line) % 2: # Invalid packet, odd number of hex chars
-          continue
+          line = line[:-1]
       try:
         pkt = binascii.unhexlify(line)
       except TypeError:
